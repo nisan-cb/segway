@@ -1,7 +1,7 @@
 #!/usr/bin/env pybricks-micropython
 from pybricks.hubs import EV3Brick
 from pybricks.ev3devices import (Motor, TouchSensor, ColorSensor,
-                                 InfraredSensor, UltrasonicSensor, GyroSensor)
+                                 InfraredSensor, UltrasonicSensor, GyroSensor,TouchSensor)
 from pybricks.parameters import Port, Stop, Direction, Button, Color
 from pybricks.tools import wait, StopWatch, DataLog
 from pybricks.robotics import DriveBase
@@ -16,15 +16,21 @@ from pybricks.media.ev3dev import SoundFile, ImageFile
 ev3 = EV3Brick()
 ev3.speaker.beep()
 
-SPEED = 50
+SPEED = 100
 EPSILON = 5
 # Initialize motors at port A and D
 right_motor = Motor(Port.A)
 left_motor = Motor(Port.D)
 
-# Initialize gyro and infrared sensors
+# Initialize gyro sensors
 gyro_sensor =  GyroSensor(Port.S2)
-# infrared_sensor = InfraredSensor(Port.S3)
+gyro_angle = 0
+# Initialize touch sensors
+touch_sensor =  TouchSensor(Port.S3)
+switch_state = "OFF"
+press_duration = 0
+is_switch_disable = False
+# infrared_sensor = InfraredSensor(Port.S1)
 
 # Initialize gyro and infrared sensors
 
@@ -32,24 +38,53 @@ def set_speed(speed_left=0, speed_right=0):
     left_motor.dc(speed_left)
     right_motor.dc(speed_right)
 
+def stop():
+    set_speed(0,0)
 
-wait(1000)
+def start():
+    global gyro_angle
+    gyro_sensor_value = gyro_sensor.speed()
+    # ev3.screen.draw_text(40, 50, gyro_sensor_value )
+    # ev3.screen.clear()
+    gyro_angle += gyro_sensor_value
+    if gyro_angle > EPSILON :
+        set_speed(SPEED,SPEED)
+    elif gyro_angle < -EPSILON :
+        set_speed(-SPEED,-SPEED)
+    else:
+        set_speed(0,0)
 
-set_speed(50,50)
+
 wait(500)
 
 
 while 1:
+    if not is_switch_disable and touch_sensor.pressed():
+        press_duration += 1
+        if press_duration>25 and switch_state == "ON":
+            switch_state="OFF"
+            ev3.screen.clear()
+            is_switch_disable=True
+        elif press_duration>25 and switch_state == "OFF":
+            ev3.screen.clear()
+            switch_state="ON"
+            is_switch_disable=True
+    elif not touch_sensor.pressed():
+        press_duration=0
+        is_switch_disable=False
 
-    gyro_sensor_value = gyro_sensor.speed()
-    ev3.screen.draw_text(40, 50, gyro_sensor_value )
-    ev3.screen.clear()
-    if gyro_sensor_value > EPSILON :
-        set_speed(SPEED,SPEED)
-    elif gyro_sensor_value < -EPSILON :
-        set_speed(-SPEED,-SPEED)
+
+    ev3.screen.draw_text(40, 50,  switch_state)
+
+    if switch_state == "ON":
+        start()
     else:
-        set_speed(0,0)
+        stop()
+
+
+        
+
+   
         
 
 
