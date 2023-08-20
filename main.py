@@ -29,7 +29,7 @@ prev_angle = 0
 gyro_start_angle = gyro_sensor.angle()
 # Initialize touch sensors
 touch_sensor =  TouchSensor(Port.S3)
-switch_state = "OFF"
+switch_state = "ON"
 press_duration = 0
 is_switch_disable = False
 # infrared_sensor = InfraredSensor(Port.S1)
@@ -42,22 +42,32 @@ def set_speed(speed_left=0, speed_right=0):
     left_motor.dc(speed_left)
     right_motor.dc(speed_right)
 
+def hold():
+    # left_motor.dc(0)
+    left_motor.hold()
+    # right_motor.dc(0)
+    right_motor.hold()
 
-leave_the_stand_iterations = 150
+
+leave_the_stand_iterations = 100
 def wake_up():
-    ev3.screen.load_image(ImageFile.AWAKE)
-    ev3.light.on(Color.GREEN)
-    global gyro_angle
     global leave_the_stand_iterations
     global gyro_start_angle
+    ev3.screen.load_image(ImageFile.SLEEPING)
+    wait(1000)
+    ev3.speaker.play_file(SoundFile.SPEED_UP)
+    ev3.screen.load_image(ImageFile.AWAKE)
+    ev3.light.on(Color.GREEN)
+    left_motor.reset_angle(0)
+    right_motor.reset_angle(0)
+    gyro_start_angle = gyro_sensor.angle()
+    
     while leave_the_stand_iterations > 0:
-        set_speed(50,50)
-        gyro_angle = 0
+        set_speed(30,30)
         gyro_start_angle = gyro_sensor.angle()
         if leave_the_stand_iterations == 1:
             set_speed(0,0)
         leave_the_stand_iterations -= 1
-    start()
 
 
 
@@ -66,7 +76,7 @@ def stop():
     ev3.screen.load_image(ImageFile.SLEEPING)
     global leave_the_stand_iterations
     # Reset the sensors and variables.
-    leave_the_stand_iterations = 150
+    leave_the_stand_iterations = 100
     left_motor.reset_angle(0)
     right_motor.reset_angle(0)
     set_speed(0,0)
@@ -77,24 +87,23 @@ def start():
     global curr_angle
     global prev_angle
     global gyro_start_angle
-    # gyro_sensor_speed = gyro_sensor.speed()
-    prev_angle = curr_angle
     curr_angle = gyro_sensor.angle()
     delta = abs(curr_angle - gyro_start_angle)
 
-    speed = delta*10 + 20
-    speed = max(40, speed)
-    if curr_angle > gyro_start_angle + 2:
+    speed = delta*8
+    speed = max(50, speed)
+    if curr_angle > gyro_start_angle:
         set_speed(speed,speed)
     elif curr_angle < gyro_start_angle :
         set_speed(-speed,-speed)
     else:
-        set_speed(0,0)
+        hold()
 
 
 
+# wake_up()
+# left_motor.run_time(50,3000)
 
-wait(500)
 while 1:
     is_switch_disable = False
     while touch_sensor.pressed():
@@ -107,9 +116,14 @@ while 1:
                 is_switch_disable=True
 
 
-
     if switch_state == "ON":
-        wake_up()  
+        wake_up()
+        while 1 :
+            start()
+            while touch_sensor.pressed():
+                switch_state = "OFF"
+            if  switch_state == "OFF":
+                break
     else:
         stop()
 
