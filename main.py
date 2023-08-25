@@ -22,24 +22,22 @@ from pybricks.tools import wait, StopWatch
 # Initialize the EV3 brick.
 ev3 = EV3Brick()
 
-# Initialize the motors connected to the drive wheels.
+# Initialize the motors.
 left_motor = Motor(Port.D)
 right_motor = Motor(Port.A)
 
-# Initialize the motor connected to the arms.
-# arm_motor = Motor(Port.C)
-
-# Initialize the Color Sensor. It is used to detect the colors that command
-# which way the robot should move.
-# color_sensor = ColorSensor(Port.S1)
-
-# Initialize the gyro sensor. It is used to provide feedback for balancing the
-# robot.
+# Initialize the gyro sensor. 
+# It is used to provide feedback for balancing the robot.
 gyro_sensor = GyroSensor(Port.S2)
 
-# Initialize the ultrasonic sensor. It is used to detect when the robot gets
-# too close to an obstruction.
+# Initialize the ultrasonic sensor. 
+# It is used to detect when the robot gets too close to an obstruction.
 ultrasonic_sensor = UltrasonicSensor(Port.S4)
+
+# Initialize the Color Sensor. 
+# It is used to detect the colors that command which way the robot should move.
+color_sensor = ColorSensor(Port.S1)
+
 
 # Initialize the timers.
 fall_timer = StopWatch()
@@ -48,22 +46,19 @@ control_loop_timer = StopWatch()
 action_timer = StopWatch()
 
 
-# The following (UPPERCASE names) are constants that control how the program
-# behaves.
-
+# Hyper-parameters
 GYRO_CALIBRATION_LOOP_COUNT = 200
 GYRO_OFFSET_FACTOR = 0.0005
 TARGET_LOOP_PERIOD = 15  # ms
-ARM_MOTOR_SPEED = 600  # deg/s
 
 # Actions will be used to change which way the robot drives.
 Action = namedtuple('Action ', ['drive_speed', 'steering'])
 
 # These are the pre-defined actions
 STOP = Action(drive_speed=0, steering=0)
-FORWARD_FAST = Action(drive_speed=150, steering=0)
-FORWARD_SLOW = Action(drive_speed=40, steering=0)
-BACKWARD_FAST = Action(drive_speed=-75, steering=0)
+FORWARD_FAST = Action(drive_speed=100, steering=0)
+FORWARD_SLOW = Action(drive_speed=50, steering=0)
+BACKWARD_FAST = Action(drive_speed=-100, steering=0)
 BACKWARD_SLOW = Action(drive_speed=-10, steering=0)
 TURN_RIGHT = Action(drive_speed=0, steering=70)
 TURN_LEFT = Action(drive_speed=0, steering=-70)
@@ -73,8 +68,8 @@ TURN_LEFT = Action(drive_speed=0, steering=-70)
 ACTION_MAP = {
     Color.RED: STOP,
     Color.GREEN: FORWARD_FAST,
-    Color.BLUE: TURN_RIGHT,
-    Color.YELLOW: TURN_LEFT,
+    Color.YELLOW: TURN_RIGHT,
+    Color.BLUE: TURN_LEFT,
     Color.WHITE: BACKWARD_FAST,
 }
 
@@ -95,7 +90,6 @@ ACTION_MAP = {
 #     yield action
 #
 def update_action():
-    # arm_motor.reset_angle(0)
     action_timer.reset()
 
     # Drive forward for 4 seconds to leave stand, then stop.
@@ -111,7 +105,7 @@ def update_action():
     while True:
         # First, we check the color sensor. The detected color is looked up in
         # the action map.
-        # new_action = ACTION_MAP.get(color_sensor.color())
+        new_action = ACTION_MAP.get(color_sensor.color())
 
         # If the color was found, beep for 0.1 seconds and then change the
         # action depending on which color was detected.
@@ -131,53 +125,38 @@ def update_action():
                 action = new_action
             yield action
 
+
         # If the measured distance of the ultrasonic sensor is less than 250
         # millimeters, then back up slowly.
-        # if ultrasonic_sensor.distance() < 250:
-        #     # Back up slowly while wiggling the arms back and forth.
-        #     yield BACKWARD_SLOW
+        if ultrasonic_sensor.distance() < 250:
+            # Back up slowly while wiggling the arms back and forth.
+            yield BACKWARD_SLOW
+            
+            # Randomly turn left or right for 4 seconds while still backing
+            # up slowly.
+            turn = urandom.choice([TURN_LEFT, TURN_RIGHT])
+            yield Action(drive_speed=BACKWARD_SLOW.drive_speed,
+                         steering=turn.steering)
+            action_timer.reset()
+            while action_timer.time() < 4000:
+                yield
 
-        #     # arm_motor.run_angle(ARM_MOTOR_SPEED, 30, wait=False)
-        #     # while not arm_motor.control.done():
-        #     #     yield
-        #     # arm_motor.run_angle(ARM_MOTOR_SPEED, -60, wait=False)
-        #     # while not arm_motor.control.done():
-        #     #     yield
-        #     # arm_motor.run_angle(ARM_MOTOR_SPEED, 30, wait=False)
-        #     # while not arm_motor.control.done():
-        #     #     yield
+            # Beep and then restore the previous action from before the
+            # ultrasonic sensor detected an obstruction.
+            action_timer.reset()
+            ev3.speaker.beep(1000, -1)
+            while action_timer.time() < 100:
+                yield
+            ev3.speaker.beep(0, -1)
 
-        #     # Randomly turn left or right for 4 seconds while still backing
-        #     # up slowly.
-        #     turn = urandom.choice([TURN_LEFT, TURN_RIGHT])
-        #     yield Action(drive_speed=BACKWARD_SLOW.drive_speed,
-        #                  steering=turn.steering)
-        #     action_timer.reset()
-        #     while action_timer.time() < 4000:
-        #         yield
-
-        #     # Beep and then restore the previous action from before the
-        #     # ultrasonic sensor detected an obstruction.
-        #     action_timer.reset()
-        #     ev3.speaker.beep(1000, -1)
-        #     while action_timer.time() < 100:
-        #         yield
-        #     ev3.speaker.beep(0, -1)
-
-        #     yield action
+            yield action
 
         # This adds a small delay since we don't need to read these sensors
-        # continuously. Reading once every 100 milliseconds is fast enough.
+        # continuously. Reading once every 200 milliseconds is fast enough.
         action_timer.reset()
-        while action_timer.time() < 100:
+        while action_timer.time() < 200:
             yield
 
-
-# If we fall over in the middle of an action, the arm motors could be moving or
-# the speaker could be beeping, so we need to stop both of those.
-def stop_action():
-    ev3.speaker.beep(0, -1)
-    # arm_motor.run_target(ARM_MOTOR_SPEED, 0)
 
 
 while True:
@@ -227,7 +206,7 @@ while True:
     ev3.screen.load_image(ImageFile.AWAKE)
     ev3.light.on(Color.GREEN)
 
-    # Main control loop for balancing the robot.
+    # Main loop .
     while True:
         # This timer measures how long a single loop takes. This will be used
         # to help keep the loop time consistent, even when different actions
@@ -294,13 +273,12 @@ while True:
         # Make sure loop time is at least TARGET_LOOP_PERIOD. The output power
         # calculation above depends on having a certain amount of time in each
         # loop.
-        wait(TARGET_LOOP_PERIOD - single_loop_timer.time())
+        # wait(TARGET_LOOP_PERIOD - single_loop_timer.time())
 
     # Handle falling over. If we get to this point in the program, it means
     # that the robot fell over.
 
     # Stop all of the motors.
-    stop_action()
     left_motor.stop()
     right_motor.stop()
 
@@ -311,4 +289,4 @@ while True:
     ev3.speaker.play_file(SoundFile.SPEED_DOWN)
 
     # Wait for a few seconds before trying to balance again.
-    wait(3000)
+    wait(2500)
