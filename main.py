@@ -1,5 +1,11 @@
 #!/usr/bin/env pybricks-micropython
 
+# Nisan Cohen Burayev - 315433656
+# Avi Haimov 205894710
+# Peleg Vadbeker - 209485838
+
+
+
 from ucollections import namedtuple
 import urandom
 
@@ -69,17 +75,20 @@ def update_action():
 
     # Drive forward for 4 seconds to leave stand, then stop.
     yield FORWARD_SLOW
-    while action_timer.time() < 4000:
-        yield
+    while action_timer.time() < 20000:
+        yield 
 
-    # action = STOP
-    # yield action
+    action = STOP
+    yield action
 
     # Start checking sensors on arms. When specific conditions are sensed,
     # different actions will be performed.
     while True:
+        yield FORWARD_FAST
+
         # First, we check the color sensor. The detected color is looked up in
         # the action map.
+
         new_action = ACTION_MAP.get(color_sensor.color())
 
         # If the color was found, beep for 0.1 seconds and then change the
@@ -177,9 +186,11 @@ while True:
     gyro_offset = gyro_sum / GYRO_CALIBRATION_LOOP_COUNT
 
     # Awake eyes and green light let us know that the robot is ready to go!
+    action_task = update_action()
     ev3.speaker.play_file(SoundFile.SPEED_UP)
     ev3.screen.load_image(ImageFile.AWAKE)
     ev3.light.on(Color.GREEN)
+
 
     # Main loop .
     while True:
@@ -206,7 +217,7 @@ while True:
         gyro_offset *= (1 - GYRO_OFFSET_FACTOR)
         gyro_offset += GYRO_OFFSET_FACTOR * gyro_sensor_value
         robot_body_rate = gyro_sensor_value - gyro_offset
-        robot_body_angle += robot_body_rate * average_control_loop_period
+        robot_body_angle += robot_body_rate * average_control_loop_period # v * t
 
         # calculate wheel angle and speed
         left_motor_angle = left_motor.angle()
