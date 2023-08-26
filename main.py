@@ -159,7 +159,7 @@ while True:
     motor_position_change = [0, 0, 0, 0]
     drive_speed, steering = 0, 0
     control_loop_count = 0
-    robot_body_angle = 0
+    robot_body_angle = 1
 
     # Since update_action() is a generator (it uses "yield" instead of
     # "return") this doesn't actually run update_action() right now but
