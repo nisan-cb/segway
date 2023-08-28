@@ -75,7 +75,7 @@ def update_action():
 
     # Drive forward for 4 seconds to leave stand, then stop.
     yield FORWARD_SLOW
-    while action_timer.time() < 20000:
+    while action_timer.time() < 4000:
         yield 
 
     action = STOP
@@ -241,8 +241,8 @@ while True:
             output_power = -100
 
         # Drive the motors.
-        left_motor.dc(output_power - 0.1 * steering)
-        right_motor.dc(output_power + 0.1 * steering)
+        left_motor.dc(output_power - 0.2 * steering)
+        right_motor.dc(output_power + 0.2 * steering)
 
         # Check if robot fell down. If the output speed is +/-100% for more
         # than one second, we know that we are no longer balancing properly.
